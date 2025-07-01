@@ -1,0 +1,1 @@
+{"id":"webhook_123","type":"payment.created","data":{"id":"payment_123","amount":1000,"currency":"EUR","status":"pending","created_at":"2024-03-20T10:00:00Z","reference":"ref_123","sender":{"id":"sender_123","name":"John Doe"},"recipient":{"id":"recipient_123","name":"Jane Doe"}}}
