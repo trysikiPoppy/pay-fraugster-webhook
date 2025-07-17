@@ -1,71 +1,77 @@
 # Pay Republic → Fraugster Integration
 
-Система интеграции между платежной платформой Pay Republic и антифрод-сервисом Fraugster для обработки транзакций в реальном времени.
+## About This Project
 
-## Архитектура
+This is a demonstration project showcasing webhook integration patterns between payment systems and fraud detection services. The solution implements production-ready security patterns, comprehensive error handling, and scalable architecture.
+
+**Note:** This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
+
+Real-time transaction processing system integrating Pay Republic payment platform with Fraugster anti-fraud service.
+
+## Architecture
 
 ```
 Pay Republic → Webhook → Express.js → Fraugster API
-              (HMAC)    (обогащение)   (анализ)
+              (HMAC)    (enrichment)   (analysis)
 ```
 
-### Компоненты системы
+### System Components
 
-**Контроллеры:**
+**Controllers:**
 
-- **WebhookController**: Обработка HTTP запросов от Pay Republic
+- **WebhookController**: Handles HTTP requests from Pay Republic
 
-**Сервисы:**
+**Services:**
 
-- **WebhookService**: Основная бизнес-логика обработки транзакций
-- **PayRepublicService**: OAuth авторизация и работа с API
-- **FraugsterService**: Аутентификация сессий и отправка данных
+- **WebhookService**: Main business logic for transaction processing
+- **PayRepublicService**: OAuth authorization and API interaction
+- **FraugsterService**: Session authentication and data submission
 
 **Middleware:**
 
-- **validateWebhook**: HMAC-SHA256 проверка подписей
-- **validatePayJson**: Валидация структуры JSON payload
+- **validateWebhook**: HMAC-SHA256 signature verification
+- **validatePayJson**: JSON payload structure validation
 - **security**: CORS, Helmet, rate limiting, request size limit
-- **errorHandler**: Глобальная обработка ошибок и 404
+- **errorHandler**: Global error handling and 404 responses
 
-**Утилиты:**
+**Utilities:**
 
-- **logger**: Winston-based логирование с ротацией файлов
-- **TransactionLogger**: Специализированное логирование транзакций
+- **logger**: Winston-based logging with file rotation
+- **TransactionLogger**: Specialized transaction logging
 
-**Типы:**
+**Types:**
 
-- **pay.types.ts**: TypeScript типы для Pay Republic API
-- **fraugster.types.ts**: TypeScript типы для Fraugster API
+- **pay.types.ts**: TypeScript types for Pay Republic API
+- **fraugster.types.ts**: TypeScript types for Fraugster API
 
-## Требования к окружению
+## Environment Requirements
 
 - Node.js 18+
 - TypeScript 5.3+
 - Express.js 4.18+
-- Winston 3.11+ (логирование)
-- Axios 1.6+ (HTTP клиент)
+- Winston 3.11+ (logging)
+- Axios 1.6+ (HTTP client)
 
-## Установка
+## Installation
 
 ```bash
-# Установка зависимостей
+# Install dependencies
 npm install
 
-# Сборка проекта
+# Build project
 npm run build
 
-# Запуск в продакшене
+# Run in production
 npm start
 
-# Запуск в режиме разработки
+# Run in development mode
 npm run dev
 
-# Тестирование webhook
+# Test webhook
 npm run test:webhook
 ```
 
-## Переменные окружения
+## Environment Variables
 
 ```env
 PORT=3000
@@ -85,7 +91,7 @@ FRAUGSTER_PASSWORD=your_password
 
 ### POST /webhook
 
-Основной endpoint для получения webhooks от Pay Republic.
+Main endpoint for receiving webhooks from Pay Republic.
 
 **Headers:**
 
@@ -96,14 +102,14 @@ FRAUGSTER_PASSWORD=your_password
 
 **Response:**
 
-- `200 OK` - Транзакция успешно обработана
-- `401 Unauthorized` - Неверная подпись или отсутствуют заголовки
-- `400 Bad Request` - Неверная структура данных
-- `500 Internal Server Error` - Ошибка обработки
+- `200 OK` - Transaction processed successfully
+- `401 Unauthorized` - Invalid signature or missing headers
+- `400 Bad Request` - Invalid data structure
+- `500 Internal Server Error` - Processing error
 
 ### GET /health
 
-Проверка состояния сервиса.
+Service health check.
 
 **Response:**
 
@@ -115,39 +121,39 @@ FRAUGSTER_PASSWORD=your_password
 }
 ```
 
-## Безопасность
+## Security
 
 ### HMAC Signature Validation
 
-Все webhooks проверяются с помощью HMAC-SHA256 подписей:
+All webhooks are verified using HMAC-SHA256 signatures:
 
-1. Вычисляется SHA1 хеш от тела запроса
-2. Создается строка подписи: `"digest": "hash"\n@signature-params: params`
-3. Подпись проверяется с помощью секретного ключа
+1. SHA1 hash is calculated from request body
+2. Signature string is created: `"digest": "hash"\n@signature-params: params`
+3. Signature is verified using secret key
 
 ### Smart Rate Limiting
 
-- **Лимиты**: 100 запросов/минуту для webhook endpoint
-- **Skip логика**: Автоматически пропускает запросы с User-Agent содержащим "pay-republic" или "webhook"
-- **SlowDown**: После 50 запросов добавляет задержку 200ms (максимум 2 секунды)
-- **Response**: Возвращает 429 с заголовками `retry-after`
-- **Scope**: Применяется только к `/webhook`, health endpoint без ограничений
+- **Limits**: 100 requests/minute for webhook endpoint
+- **Skip logic**: Automatically skips requests with User-Agent containing "pay-republic" or "webhook"
+- **SlowDown**: After 50 requests adds 200ms delay (maximum 2 seconds)
+- **Response**: Returns 429 with `retry-after` headers
+- **Scope**: Applied only to `/webhook`, health endpoint without restrictions
 
 ### CORS Policy
 
-Разрешены запросы только от доменов Pay Republic:
+Only requests from Pay Republic domains are allowed:
 
 - `http://localhost:3000`
 - `http://localhost:8080`
 - `http://localhost:4000`
 - `http://localhost:5000`
 
-**Настройки:**
+**Settings:**
 
-- **Methods**: `POST` только
+- **Methods**: `POST` only
 - **Headers**: `Content-Type`, `Authorization`, `digest`, `signature`, `signature-input`
 - **Credentials**: `false`
-- **Логирование**: Блокированные запросы логируются с событием `cors_blocked`
+- **Logging**: Blocked requests are logged with `cors_blocked` event
 
 ### Security Headers
 
@@ -157,46 +163,46 @@ FRAUGSTER_PASSWORD=your_password
 - X-Content-Type-Options
 - Request Size Limit (1MB)
 
-## Логирование
+## Logging
 
-Система логирует все важные события:
+System logs all important events:
 
-- **logs/transactions.log** - Основные события транзакций (50MB x 30)
-- **logs/error.log** - Ошибки системы (10MB x 10)
-- **logs/combined.log** - Все события (20MB x 15)
+- **logs/transactions.log** - Main transaction events (50MB x 30)
+- **logs/error.log** - System errors (10MB x 10)
+- **logs/combined.log** - All events (20MB x 15)
 
-### Типы событий
+### Event Types
 
-**Основные события:**
+**Main events:**
 
-- `webhook_received` - Получение webhook от Pay Republic
-- `signature_validation` - Проверка HMAC подписи
-- `fraugster_response` - Ответ от Fraugster API
-- `processing_error` - Ошибки обработки
+- `webhook_received` - Webhook received from Pay Republic
+- `signature_validation` - HMAC signature verification
+- `fraugster_response` - Response from Fraugster API
+- `processing_error` - Processing errors
 
-**Валидация и безопасность:**
+**Validation and security:**
 
-- `json_validation_failed` - Ошибка структуры JSON
-- `json_validation_warning` - Предупреждения валидации
-- `webhook_validation_failed` - Ошибка проверки подписи
-- `validation_errors` - Ошибки валидации данных Fraugster
-- `rate_limit_exceeded` - Превышение лимитов запросов
-- `cors_blocked` - Блокировка CORS
-- `request_too_large` - Превышение размера запроса
+- `json_validation_failed` - JSON structure error
+- `json_validation_warning` - Validation warnings
+- `webhook_validation_failed` - Signature verification error
+- `validation_errors` - Fraugster data validation errors
+- `rate_limit_exceeded` - Rate limit exceeded
+- `cors_blocked` - CORS blocked
+- `request_too_large` - Request size exceeded
 
-**Системные события:**
+**System events:**
 
-- `server_start` - Запуск сервера
-- `startup_error` - Ошибка запуска
-- `global_error` - Глобальная ошибка
-- `route_not_found` - Маршрут не найден
-- `auth_error` - Ошибка аутентификации
-- `api_error` - Ошибка API
-- `pay_oauth_error` - Ошибка OAuth Pay Republic
-- `session_token_expired` - Истечение токена сессии
-- `transaction_stats` - Статистика транзакций
+- `server_start` - Server startup
+- `startup_error` - Startup error
+- `global_error` - Global error
+- `route_not_found` - Route not found
+- `auth_error` - Authentication error
+- `api_error` - API error
+- `pay_oauth_error` - Pay Republic OAuth error
+- `session_token_expired` - Session token expired
+- `transaction_stats` - Transaction statistics
 
-## Мониторинг
+## Monitoring
 
 ### Health Check
 
@@ -204,29 +210,29 @@ FRAUGSTER_PASSWORD=your_password
 curl https://your-domain.com/health
 ```
 
-### Логи приложения
+### Application Logs
 
 ```bash
 tail -f logs/transactions.log
 tail -f logs/error.log
 ```
 
-### Метрики производительности
+### Performance Metrics
 
-- Обработка запросов: ~50-100ms
-- Throughput: до 100 RPS
+- Request processing: ~50-100ms
+- Throughput: up to 100 RPS
 - Memory usage: ~50-100MB
 - Trust proxy: 1 level (Railway compatible)
 
-## Обработка ошибок
+## Error Handling
 
 ### Graceful Shutdown
 
-Сервер корректно обрабатывает SIGTERM и SIGINT сигналы для graceful shutdown в производственной среде.
+Server properly handles SIGTERM and SIGINT signals for graceful shutdown in production environment.
 
-### Проверка окружения
+### Environment Validation
 
-При запуске автоматически проверяются обязательные переменные окружения:
+Required environment variables are automatically checked at startup:
 
 - `PAY_WEBHOOK_SECRET`
 - `PAY_CLIENT_ID`
@@ -234,76 +240,76 @@ tail -f logs/error.log
 - `FRAUGSTER_USERNAME`
 - `FRAUGSTER_PASSWORD`
 
-При отсутствии любой из переменных сервер завершается с ошибкой `startup_error`.
+If any variable is missing, server terminates with `startup_error`.
 
 ### Error Recovery
 
-- Автоматическое создание директории `logs/` при запуске
-- Логирование всех ошибок для дальнейшего анализа
-- Graceful обработка ошибок в middleware chain
-- Сохранение полного контекста ошибок (headers, IP, stack trace)
+- Automatic `logs/` directory creation at startup
+- All errors logged for further analysis
+- Graceful error handling in middleware chain
+- Complete error context preservation (headers, IP, stack trace)
 
 ## Troubleshooting
 
-### Проблемы с подписью
+### Signature Issues
 
-- Проверьте правильность `PAY_WEBHOOK_SECRET`
-- Убедитесь что заголовки `digest`, `signature`, `signature-input` присутствуют
-- События: `webhook_validation_failed`, `signature_validation`
+- Check `PAY_WEBHOOK_SECRET` correctness
+- Ensure `digest`, `signature`, `signature-input` headers are present
+- Events: `webhook_validation_failed`, `signature_validation`
 
-### Ошибки валидации JSON
+### JSON Validation Errors
 
-- Проверьте структуру payload (обязательные поля: `id`, `event`, `data`)
-- События: `json_validation_failed`, `json_validation_warning`
+- Check payload structure (required fields: `id`, `event`, `data`)
+- Events: `json_validation_failed`, `json_validation_warning`
 
-### Ошибки аутентификации Fraugster
+### Fraugster Authentication Errors
 
-- Убедитесь что `FRAUGSTER_USERNAME` и `FRAUGSTER_PASSWORD` корректны
-- События: `auth_error`, `session_token_expired`
+- Ensure `FRAUGSTER_USERNAME` and `FRAUGSTER_PASSWORD` are correct
+- Events: `auth_error`, `session_token_expired`
 
 ### Rate Limiting Issues
 
-- Проверьте User-Agent заголовки (должен содержать "pay-republic" или "webhook")
-- События: `rate_limit_exceeded`, `request_too_large`
+- Check User-Agent headers (should contain "pay-republic" or "webhook")
+- Events: `rate_limit_exceeded`, `request_too_large`
 
-### Проблемы с CORS
+### CORS Issues
 
-- Проверьте что запросы идут с разрешенных доменов Pay Republic
-- События: `cors_blocked`
+- Verify requests come from allowed Pay Republic domains
+- Events: `cors_blocked`
 
-### API ошибки
+### API Errors
 
-- Fraugster API: события `api_error`, `validation_errors`
-- Pay Republic API: события `pay_oauth_error`, `pay_api_error`
+- Fraugster API: events `api_error`, `validation_errors`
+- Pay Republic API: events `pay_oauth_error`, `pay_api_error`
 
-## Деплой в продакшен
+## Production Deployment
 
 ### Railway
 
-1. Создайте новый проект в Railway
-2. Подключите Git репозиторий
-3. Настройте переменные окружения
-4. Деплой произойдет автоматически
+1. Create new project in Railway
+2. Connect Git repository
+3. Configure environment variables
+4. Deployment will happen automatically
 
 ### Environment Variables
 
-Убедитесь что все переменные настроены для продакшена:
+Ensure all variables are configured for production:
 
-- `PAY_API_URL` должен указывать на ваш API сервер
-- Используйте продакшн credentials для всех сервисов
-- Установите `NODE_ENV=production`
+- `PAY_API_URL` should point to your API server
+- Use production credentials for all services
+- Set `NODE_ENV=production`
 
-### Webhook Configuration в Pay Republic
+### Webhook Configuration in Pay Republic
 
 - **URL**: `https://your-app.up.railway.app/webhook`
 - **Events**: `PAYMENT.UPDATED`, `PAYMENT.CREATED`, `PAYMENT.STATUS_UPDATED`
-- **Secret**: Используйте сгенерированный secret key
+- **Secret**: Use generated secret key
 
-## Версионирование
+## Versioning
 
-Версия: 1.0.0 (Production Ready)
+Version: 1.0.0 (Production Ready)
 
-### Основные зависимости
+### Main Dependencies
 
 **Runtime:**
 
@@ -325,7 +331,7 @@ tail -f logs/error.log
 - @types/cors: 2.8.17
 - @types/node: 20.11.16
 
-## Архитектурные решения
+## Architectural Decisions
 
 ### Trust Proxy Configuration
 
@@ -338,8 +344,8 @@ app.set("trust proxy", 1); // Railway compatible
 **webhookRateLimit configuration:**
 
 ```typescript
-windowMs: 1 * 60 * 1000,    // 1 минута
-max: 100,                   // максимум запросов
+windowMs: 1 * 60 * 1000,    // 1 minute
+max: 100,                   // maximum requests
 skip: (req) => {
   const userAgent = req.get("User-Agent") || "";
   return userAgent.includes("pay-republic") || userAgent.includes("webhook");
@@ -349,10 +355,10 @@ skip: (req) => {
 **webhookSlowDown configuration:**
 
 ```typescript
-windowMs: 1 * 60 * 1000,    // 1 минута
-delayAfter: 50,             // после 50 запросов
-delayMs: () => 200,         // задержка 200ms
-maxDelayMs: 2000            // максимум 2 секунды
+windowMs: 1 * 60 * 1000,    // 1 minute
+delayAfter: 50,             // after 50 requests
+delayMs: () => 200,         // 200ms delay
+maxDelayMs: 2000            // maximum 2 seconds
 ```
 
-Эта конфигурация обеспечивает безопасность без блокировки легитимных webhooks от Pay Republic.
+This configuration ensures security without blocking legitimate webhooks from Pay Republic.
