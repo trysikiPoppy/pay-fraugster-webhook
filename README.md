@@ -1,4 +1,4 @@
-# Pay Republic → Fraugster Integration
+# Payment Service → Fraud Detection Integration
 
 ## About This Project
 
@@ -6,26 +6,26 @@ This is a demonstration project showcasing webhook integration patterns between 
 
 **Note:** This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
 
-Real-time transaction processing system integrating Pay Republic payment platform with Fraugster anti-fraud service.
+Real-time transaction processing system integrating payment platform with fraud detection service.
 
 ## Architecture
 
 ```
-Pay Republic → Webhook → Express.js → Fraugster API
-              (HMAC)    (enrichment)   (analysis)
+Payment Service → Webhook → Express.js → Fraud Detection API
+                  (HMAC)    (enrichment)     (analysis)
 ```
 
 ### System Components
 
 **Controllers:**
 
-- **WebhookController**: Handles HTTP requests from Pay Republic
+- **WebhookController**: Handles HTTP requests from Payment Service
 
 **Services:**
 
 - **WebhookService**: Main business logic for transaction processing
-- **PayRepublicService**: OAuth authorization and API interaction
-- **FraugsterService**: Session authentication and data submission
+- **PaymentService**: OAuth authorization and API interaction
+- **FraudService**: Session authentication and data submission
 
 **Middleware:**
 
@@ -41,8 +41,8 @@ Pay Republic → Webhook → Express.js → Fraugster API
 
 **Types:**
 
-- **pay.types.ts**: TypeScript types for Pay Republic API
-- **fraugster.types.ts**: TypeScript types for Fraugster API
+- **payment.types.ts**: TypeScript types for Payment Service API
+- **fraud.types.ts**: TypeScript types for Fraud Detection API
 
 ## Environment Requirements
 
@@ -77,21 +77,21 @@ npm run test:webhook
 PORT=3000
 NODE_ENV=production
 
-PAY_API_URL=http://localhost:8080
-PAY_CLIENT_ID=your_client_id
-PAY_CLIENT_SECRET=your_client_secret
-PAY_WEBHOOK_SECRET=your_webhook_secret
+PAYMENT_API_URL=http://localhost:8080
+PAYMENT_CLIENT_ID=your_client_id
+PAYMENT_CLIENT_SECRET=your_client_secret
+PAYMENT_WEBHOOK_SECRET=your_webhook_secret
 
-FRAUGSTER_API_URL=https://api.fraugsterapi.com
-FRAUGSTER_USERNAME=your_username
-FRAUGSTER_PASSWORD=your_password
+FRAUD_API_URL=https://api.fraud-detection.com
+FRAUD_USERNAME=your_username
+FRAUD_PASSWORD=your_password
 ```
 
 ## API Endpoints
 
 ### POST /webhook
 
-Main endpoint for receiving webhooks from Pay Republic.
+Main endpoint for receiving webhooks from Payment Service.
 
 **Headers:**
 
@@ -134,14 +134,14 @@ All webhooks are verified using HMAC-SHA256 signatures:
 ### Smart Rate Limiting
 
 - **Limits**: 100 requests/minute for webhook endpoint
-- **Skip logic**: Automatically skips requests with User-Agent containing "pay-republic" or "webhook"
+- **Skip logic**: Automatically skips requests with User-Agent containing "payment-service" or "webhook"
 - **SlowDown**: After 50 requests adds 200ms delay (maximum 2 seconds)
 - **Response**: Returns 429 with `retry-after` headers
 - **Scope**: Applied only to `/webhook`, health endpoint without restrictions
 
 ### CORS Policy
 
-Only requests from Pay Republic domains are allowed:
+Only requests from Payment Service domains are allowed:
 
 - `http://localhost:3000`
 - `http://localhost:8080`
@@ -175,9 +175,9 @@ System logs all important events:
 
 **Main events:**
 
-- `webhook_received` - Webhook received from Pay Republic
+- `webhook_received` - Webhook received from Payment Service
 - `signature_validation` - HMAC signature verification
-- `fraugster_response` - Response from Fraugster API
+- `fraud_response` - Response from Fraud Detection API
 - `processing_error` - Processing errors
 
 **Validation and security:**
@@ -185,7 +185,7 @@ System logs all important events:
 - `json_validation_failed` - JSON structure error
 - `json_validation_warning` - Validation warnings
 - `webhook_validation_failed` - Signature verification error
-- `validation_errors` - Fraugster data validation errors
+- `validation_errors` - Fraud Detection data validation errors
 - `rate_limit_exceeded` - Rate limit exceeded
 - `cors_blocked` - CORS blocked
 - `request_too_large` - Request size exceeded
@@ -198,7 +198,7 @@ System logs all important events:
 - `route_not_found` - Route not found
 - `auth_error` - Authentication error
 - `api_error` - API error
-- `pay_oauth_error` - Pay Republic OAuth error
+- `payment_oauth_error` - Payment Service OAuth error
 - `session_token_expired` - Session token expired
 - `transaction_stats` - Transaction statistics
 
@@ -234,11 +234,11 @@ Server properly handles SIGTERM and SIGINT signals for graceful shutdown in prod
 
 Required environment variables are automatically checked at startup:
 
-- `PAY_WEBHOOK_SECRET`
-- `PAY_CLIENT_ID`
-- `PAY_CLIENT_SECRET`
-- `FRAUGSTER_USERNAME`
-- `FRAUGSTER_PASSWORD`
+- `PAYMENT_WEBHOOK_SECRET`
+- `PAYMENT_CLIENT_ID`
+- `PAYMENT_CLIENT_SECRET`
+- `FRAUD_USERNAME`
+- `FRAUD_PASSWORD`
 
 If any variable is missing, server terminates with `startup_error`.
 
@@ -253,7 +253,7 @@ If any variable is missing, server terminates with `startup_error`.
 
 ### Signature Issues
 
-- Check `PAY_WEBHOOK_SECRET` correctness
+- Check `PAYMENT_WEBHOOK_SECRET` correctness
 - Ensure `digest`, `signature`, `signature-input` headers are present
 - Events: `webhook_validation_failed`, `signature_validation`
 
@@ -262,25 +262,25 @@ If any variable is missing, server terminates with `startup_error`.
 - Check payload structure (required fields: `id`, `event`, `data`)
 - Events: `json_validation_failed`, `json_validation_warning`
 
-### Fraugster Authentication Errors
+### Fraud Detection Authentication Errors
 
-- Ensure `FRAUGSTER_USERNAME` and `FRAUGSTER_PASSWORD` are correct
+- Ensure `FRAUD_USERNAME` and `FRAUD_PASSWORD` are correct
 - Events: `auth_error`, `session_token_expired`
 
 ### Rate Limiting Issues
 
-- Check User-Agent headers (should contain "pay-republic" or "webhook")
+- Check User-Agent headers (should contain "payment-service" or "webhook")
 - Events: `rate_limit_exceeded`, `request_too_large`
 
 ### CORS Issues
 
-- Verify requests come from allowed Pay Republic domains
+- Verify requests come from allowed Payment Service domains
 - Events: `cors_blocked`
 
 ### API Errors
 
-- Fraugster API: events `api_error`, `validation_errors`
-- Pay Republic API: events `pay_oauth_error`, `pay_api_error`
+- Fraud Detection API: events `api_error`, `validation_errors`
+- Payment Service API: events `payment_oauth_error`, `payment_api_error`
 
 ## Production Deployment
 
@@ -295,11 +295,11 @@ If any variable is missing, server terminates with `startup_error`.
 
 Ensure all variables are configured for production:
 
-- `PAY_API_URL` should point to your API server
+- `PAYMENT_API_URL` should point to your API server
 - Use production credentials for all services
 - Set `NODE_ENV=production`
 
-### Webhook Configuration in Pay Republic
+### Webhook Configuration in Payment Service
 
 - **URL**: `https://your-app.up.railway.app/webhook`
 - **Events**: `PAYMENT.UPDATED`, `PAYMENT.CREATED`, `PAYMENT.STATUS_UPDATED`
@@ -336,7 +336,7 @@ Version: 1.0.0 (Production Ready)
 ### Trust Proxy Configuration
 
 ```typescript
-app.set("trust proxy", 1); // Railway compatible
+app.set("trust proxy", 1); 
 ```
 
 ### Rate Limiting Strategy
@@ -344,21 +344,21 @@ app.set("trust proxy", 1); // Railway compatible
 **webhookRateLimit configuration:**
 
 ```typescript
-windowMs: 1 * 60 * 1000,    // 1 minute
-max: 100,                   // maximum requests
+windowMs: 1 * 60 * 1000,    
+max: 100,                   
 skip: (req) => {
   const userAgent = req.get("User-Agent") || "";
-  return userAgent.includes("pay-republic") || userAgent.includes("webhook");
+  return userAgent.includes("payment-service") || userAgent.includes("webhook");
 }
 ```
 
 **webhookSlowDown configuration:**
 
 ```typescript
-windowMs: 1 * 60 * 1000,    // 1 minute
-delayAfter: 50,             // after 50 requests
-delayMs: () => 200,         // 200ms delay
-maxDelayMs: 2000            // maximum 2 seconds
+windowMs: 1 * 60 * 1000,    
+delayAfter: 50,             
+delayMs: () => 200,         
+maxDelayMs: 2000            
 ```
 
-This configuration ensures security without blocking legitimate webhooks from Pay Republic.
+This configuration ensures security without blocking legitimate webhooks from Payment Service.

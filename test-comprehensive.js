@@ -187,7 +187,9 @@ async function runTests() {
 
   console.log("\n🏁 All tests completed!");
   console.log("\n🎉 Success: All webhooks processed correctly!");
-  console.log("✅ Status 200 means Fraugster integration working");
+  console.log(
+    "✅ Status 200 means fraud detection service integration working"
+  );
   console.log("✅ Status 400 means JSON validation working");
 }
 

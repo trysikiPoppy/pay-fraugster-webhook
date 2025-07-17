@@ -63,7 +63,9 @@ export const webhookRateLimit = rateLimit({
   legacyHeaders: false,
   skip: (req) => {
     const userAgent = req.get("User-Agent") || "";
-    return userAgent.includes("pay-republic") || userAgent.includes("webhook");
+    return (
+      userAgent.includes("payment-service") || userAgent.includes("webhook")
+    );
   },
   handler: (req, res) => {
     logger.warn("Rate limit exceeded", {
@@ -87,7 +89,9 @@ export const webhookSlowDown = slowDown({
   maxDelayMs: 2000,
   skip: (req) => {
     const userAgent = req.get("User-Agent") || "";
-    return userAgent.includes("pay-republic") || userAgent.includes("webhook");
+    return (
+      userAgent.includes("payment-service") || userAgent.includes("webhook")
+    );
   },
 });
 

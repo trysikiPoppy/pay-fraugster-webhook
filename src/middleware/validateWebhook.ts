@@ -1,101 +1,78 @@
 import { Request, Response, NextFunction } from "express";
-import { config } from "../config";
 import crypto from "crypto";
-import { TransactionLogger, logger } from "../utils/logger";
+import { config } from "../config";
+import { TransactionLogger } from "../utils/logger";
 
 export const validateWebhook = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const digest = req.headers["digest"] as string;
-  const signatureInput = req.headers["signature-input"] as string;
-  const signature = req.headers["signature"] as string;
-  const webhookSecret = config.payRepublic.webhookSecret;
-
-  if (!digest || !signatureInput || !signature) {
-    const missingHeaders = {
-      digest: !!digest,
-      signatureInput: !!signatureInput,
-      signature: !!signature,
-    };
-
-    logger.warn("Missing required signature headers", {
-      event: "webhook_validation_failed",
-      reason: "missing_headers",
-      missing_headers: missingHeaders,
-      ip: req.ip,
-    });
-
-    return res.status(401).json({ error: "Missing signature headers" });
-  }
-
-  if (!webhookSecret) {
-    logger.error("Webhook secret not configured", {
-      event: "webhook_validation_error",
-      reason: "missing_secret",
-    });
-    return res.status(500).json({ error: "Webhook secret not configured" });
-  }
-
   try {
-    const body = JSON.stringify(req.body);
+    const signature = req.headers.signature as string;
+    const signatureInput = req.headers["signature-input"] as string;
+    const digest = req.headers.digest as string;
 
+    if (!signature || !signatureInput || !digest) {
+      TransactionLogger.logError(new Error("Missing required headers"), {
+        event: "webhook_validation_failed",
+        headers: req.headers,
+        ip: req.ip,
+      });
+      return res.status(401).json({
+        error: "Missing required headers",
+        required: ["signature", "signature-input", "digest"],
+      });
+    }
+
+    const bodyString = JSON.stringify(req.body);
     const calculatedDigest = crypto
       .createHash("sha1")
-      .update(body)
+      .update(bodyString)
       .digest("hex");
 
     if (digest !== calculatedDigest) {
-      logger.warn("Digest mismatch", {
+      TransactionLogger.logError(new Error("Invalid digest"), {
         event: "webhook_validation_failed",
-        reason: "digest_mismatch",
+        expected_digest: calculatedDigest,
         received_digest: digest,
-        calculated_digest: calculatedDigest,
         ip: req.ip,
       });
-      return res.status(401).json({ error: "Invalid digest" });
+      return res.status(401).json({
+        error: "Invalid digest",
+      });
     }
 
     const signatureParams = signatureInput.replace("fr1=", "");
     const signatureBase = `"digest": "${digest}"\n@signature-params: ${signatureParams}`;
-    const calculatedSignature = crypto
-      .createHmac("sha256", webhookSecret)
+    const expectedSignature = crypto
+      .createHmac("sha256", config.payment.webhookSecret)
       .update(signatureBase)
       .digest("hex");
 
-    const expectedSignature = signature.replace(/^fr1=:|:$/g, "");
+    const receivedSignature = signature.replace(/^fr1=:/, "").replace(/:$/, "");
 
-    const validationDetails = {
-      receivedDigest: digest,
-      calculatedDigest,
-      expectedSignature,
-      calculatedSignature,
-      match: expectedSignature === calculatedSignature,
-    };
-
-    TransactionLogger.logSignatureValidation(
-      validationDetails.match,
-      validationDetails
-    );
-
-    if (expectedSignature !== calculatedSignature) {
-      logger.warn("Webhook signature validation failed", {
+    if (expectedSignature !== receivedSignature) {
+      TransactionLogger.logError(new Error("Invalid signature"), {
         event: "webhook_validation_failed",
-        reason: "invalid_signature",
+        expected_signature: expectedSignature,
+        received_signature: receivedSignature,
         ip: req.ip,
-        validation_details: validationDetails,
       });
-      return res.status(401).json({ error: "Invalid signature" });
+      return res.status(401).json({
+        error: "Invalid signature",
+      });
     }
 
+    TransactionLogger.logSignatureValidation(true, req.body);
     next();
   } catch (error) {
     TransactionLogger.logError(error as Error, {
-      event: "webhook_validation_error",
+      event: "webhook_validation_failed",
       ip: req.ip,
-      headers: req.headers,
     });
-    return res.status(500).json({ error: "Validation error" });
+    return res.status(500).json({
+      error: "Internal server error",
+    });
   }
 };

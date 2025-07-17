@@ -1,13 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { logger } from "../utils/logger";
-
-export interface PayWebhookStructure {
-  id: string;
-  event: string;
-  data: any;
-  previousValues?: any;
-  createdAt: number;
-}
+import { PaymentWebhookPayload } from "../types/payment.types";
+import { TransactionLogger } from "../utils/logger";
 
 export const validatePayJson = (
   req: Request,
@@ -15,59 +8,80 @@ export const validatePayJson = (
   next: NextFunction
 ) => {
   try {
-    const payload = req.body as PayWebhookStructure;
+    const payload = req.body as PaymentWebhookPayload;
 
-    const missingFields: string[] = [];
+    if (!payload || typeof payload !== "object") {
+      TransactionLogger.logError(new Error("Invalid JSON payload"), {
+        event: "json_validation_failed",
+        reason: "not_object",
+        ip: req.ip,
+      });
+      return res.status(400).json({
+        error: "Invalid JSON payload",
+      });
+    }
 
-    if (!payload.id) missingFields.push("id");
-    if (!payload.event) missingFields.push("event");
-    if (!payload.data) missingFields.push("data");
-    if (typeof payload.createdAt !== "number") missingFields.push("createdAt");
+    const requiredFields = ["id", "event", "data"];
+    const missingFields = requiredFields.filter(
+      (field) => !payload[field as keyof PaymentWebhookPayload]
+    );
 
     if (missingFields.length > 0) {
-      logger.warn("Invalid Pay webhook structure", {
+      TransactionLogger.logError(new Error("Missing required fields"), {
         event: "json_validation_failed",
+        reason: "missing_fields",
         missing_fields: missingFields,
-        received_payload: payload,
         ip: req.ip,
       });
-
       return res.status(400).json({
-        error: "Invalid webhook structure",
-        missing_fields: missingFields,
+        error: "Missing required fields",
+        missing: missingFields,
       });
     }
 
-    if (!payload.data.id) {
-      logger.warn("Missing transaction ID in webhook data", {
-        event: "json_validation_warning",
-        payload: payload,
+    if (!payload.data || typeof payload.data !== "object") {
+      TransactionLogger.logError(new Error("Invalid data field"), {
+        event: "json_validation_failed",
+        reason: "invalid_data",
         ip: req.ip,
       });
-
       return res.status(400).json({
-        error: "Missing transaction ID in data",
+        error: "Invalid data field",
       });
     }
 
-    logger.info("Pay webhook JSON structure validated", {
-      event: "json_validation_success",
-      webhook_id: payload.id,
-      event_type: payload.event,
-      transaction_id: payload.data.id,
-    });
+    const dataRequiredFields = [
+      "id",
+      "amount",
+      "currency",
+      "status",
+      "createdAt",
+    ];
+    const missingDataFields = dataRequiredFields.filter(
+      (field) => !payload.data[field as keyof typeof payload.data]
+    );
+
+    if (missingDataFields.length > 0) {
+      TransactionLogger.logError(new Error("Missing required data fields"), {
+        event: "json_validation_failed",
+        reason: "missing_data_fields",
+        missing_data_fields: missingDataFields,
+        ip: req.ip,
+      });
+      return res.status(400).json({
+        error: "Missing required data fields",
+        missing: missingDataFields,
+      });
+    }
 
     next();
   } catch (error) {
-    logger.error("JSON validation error", {
-      event: "json_validation_error",
-      error: (error as Error).message,
-      body: req.body,
+    TransactionLogger.logError(error as Error, {
+      event: "json_validation_failed",
       ip: req.ip,
     });
-
-    return res.status(400).json({
-      error: "Invalid JSON format",
+    return res.status(500).json({
+      error: "Internal server error",
     });
   }
 };

@@ -156,7 +156,9 @@ const testPayout = async () => {
 
 const testDataEquality = async () => {
   console.log("\n🔍 Testing Data Equality between PAYIN and PAYOUT");
-  console.log("Goal: Both should have equal amount of data in Fraugster");
+  console.log(
+    "Goal: Both should have equal amount of data in fraud detection service"
+  );
 
   const payinSuccess = await testPayin();
   await new Promise((resolve) => setTimeout(resolve, 2000));

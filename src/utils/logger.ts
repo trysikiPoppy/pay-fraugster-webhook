@@ -1,113 +1,104 @@
 import winston from "winston";
 import path from "path";
 
-const logFormat = winston.format.combine(
-  winston.format.timestamp({
-    format: "YYYY-MM-DD HH:mm:ss",
-  }),
-  winston.format.errors({ stack: true }),
-  winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    let logMessage = `${timestamp} [${level.toUpperCase()}]: ${message}`;
-
-    if (Object.keys(meta).length > 0) {
-      logMessage += `\n${JSON.stringify(meta, null, 2)}`;
-    }
-
-    return logMessage;
-  })
+const logFormat = winston.format.printf(
+  ({ level, message, timestamp, ...meta }) => {
+    return `${timestamp} [${level.toUpperCase()}]: ${message} ${
+      Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ""
+    }`;
+  }
 );
 
-const jsonFormat = winston.format.combine(
-  winston.format.timestamp(),
-  winston.format.errors({ stack: true }),
-  winston.format.json()
-);
-
-export const logger = winston.createLogger({
-  level: process.env.NODE_ENV === "production" ? "info" : "debug",
+const logger = winston.createLogger({
+  level: "info",
+  format: winston.format.combine(
+    winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    winston.format.errors({ stack: true }),
+    logFormat
+  ),
   transports: [
     new winston.transports.Console({
-      format: logFormat,
+      format: winston.format.combine(winston.format.colorize(), logFormat),
     }),
     new winston.transports.File({
-      filename: path.join("logs", "error.log"),
+      filename: "logs/error.log",
       level: "error",
-      format: jsonFormat,
       maxsize: 10 * 1024 * 1024,
       maxFiles: 10,
     }),
     new winston.transports.File({
-      filename: path.join("logs", "transactions.log"),
-      level: "info",
-      format: jsonFormat,
-      maxsize: 50 * 1024 * 1024,
-      maxFiles: 30,
-    }),
-    new winston.transports.File({
-      filename: path.join("logs", "combined.log"),
-      format: jsonFormat,
+      filename: "logs/combined.log",
       maxsize: 20 * 1024 * 1024,
       maxFiles: 15,
     }),
   ],
 });
 
+const transactionLogger = winston.createLogger({
+  level: "info",
+  format: winston.format.combine(
+    winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({
+      filename: "logs/transactions.log",
+      maxsize: 50 * 1024 * 1024,
+      maxFiles: 30,
+    }),
+  ],
+});
+
+export { logger };
+
 export class TransactionLogger {
-  static logWebhookReceived(payload: any, headers: any) {
-    logger.info("Webhook received from Pay Republic", {
+  static logWebhookReceived(payload: any, headers: any, ip: string) {
+    transactionLogger.info("Webhook received", {
       event: "webhook_received",
-      pay_transaction_id: payload.data?.id,
+      payment_transaction_id: payload.data?.id,
       event_type: payload.event,
       amount: payload.data?.amount,
       currency: payload.data?.currency,
-      status: payload.data?.status,
-      timestamp: new Date().toISOString(),
       headers: {
-        digest_present: !!headers.digest,
-        signature_present: !!headers.signature,
-        signature_input_present: !!headers["signature-input"],
+        signature: headers.signature,
+        digest: headers.digest,
+        "signature-input": headers["signature-input"],
       },
-      full_payload: payload,
+      ip: ip,
+      timestamp: new Date().toISOString(),
     });
   }
 
-  static logSignatureValidation(isValid: boolean, details: any) {
-    const level = isValid ? "info" : "warn";
-    logger.log(
-      level,
-      `Webhook signature validation: ${isValid ? "SUCCESS" : "FAILED"}`,
+  static logSignatureValidation(isValid: boolean, payload: any) {
+    transactionLogger.info(
+      `Signature validation: ${isValid ? "PASSED" : "FAILED"}`,
       {
         event: "signature_validation",
-        valid: isValid,
-        validation_details: details,
+        payment_transaction_id: payload.data?.id,
+        is_valid: isValid,
         timestamp: new Date().toISOString(),
       }
     );
   }
 
-  static logDataMapping(payData: any, fraugsterData: any) {
-    // заглушки для логирования данных
-  }
+  static logFraudRequest(transactionData: any) {}
 
-  static logFraugsterRequest(transactionData: any) {
-    // заглушки для логирования запроса в fraugster
-  }
-
-  static logFraugsterResponse(requestData: any, response: any) {
-    const isApproved = response.fraugster_approved === 1;
+  static logFraudResponse(requestData: any, response: any) {
+    const isApproved = response.fraud_approved === 1;
     const level = isApproved ? "info" : "warn";
 
     logger.log(
       level,
-      `Fraugster decision: ${this.getDecisionText(
-        response.fraugster_approved
+      `Fraud detection decision: ${this.getDecisionText(
+        response.fraud_approved
       )}`,
       {
-        event: "fraugster_response",
-        pay_trans_id: requestData.trans_id,
-        frg_trans_id: response.frg_trans_id,
-        decision: response.fraugster_approved,
-        decision_text: this.getDecisionText(response.fraugster_approved),
+        event: "fraud_response",
+        payment_trans_id: requestData.trans_id,
+        fraud_trans_id: response.fraud_trans_id,
+        decision: response.fraud_approved,
+        decision_text: this.getDecisionText(response.fraud_approved),
         score: response.score,
         is_liable: response.is_liable,
         liability_reason: response.liability_reason,
@@ -115,69 +106,88 @@ export class TransactionLogger {
         validation_errors: response.validation?.errors,
         signals_count: response.evidence?.signals?.length || 0,
         signals: response.evidence?.signals,
-        device_id: response.frg_device_id,
+        device_id: response.fraud_device_id,
         timestamp: new Date().toISOString(),
       }
     );
   }
 
-  static logValidationErrors(transactionId: string, validationErrors: any[]) {
-    logger.error("Fraugster data validation errors", {
-      event: "validation_errors",
-      trans_id: transactionId,
-      error_count: validationErrors.length,
-      errors: validationErrors.map((err) => ({
-        field: err.datapoint,
-        message: err.msg,
-      })),
+  static logDataMapping(originalPayload: any, fraudData: any) {
+    transactionLogger.info("Data mapping completed", {
+      event: "data_mapping",
+      payment_transaction_id: originalPayload.data?.id,
+      fraud_transaction_id: fraudData.trans_id,
+      amount: fraudData.trans_amt,
+      currency: fraudData.trans_currency,
+      customer_id: fraudData.cust_id,
+      customer_name: `${fraudData.cust_first_name} ${fraudData.cust_last_name}`,
+      payment_method: fraudData.pmt_method,
+      country: fraudData.bill_ad_ctry,
       timestamp: new Date().toISOString(),
     });
   }
 
-  static logError(error: Error, context: any = {}) {
-    logger.error("Transaction processing error", {
+  static logValidationErrors(transactionId: string, errors: any[]) {
+    transactionLogger.warn("Fraud detection validation errors", {
+      event: "validation_errors",
+      payment_transaction_id: transactionId,
+      errors: errors,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  static logError(error: Error, context: any) {
+    transactionLogger.error("Processing error", {
       event: "processing_error",
-      error_message: error.message,
-      error_stack: error.stack,
-      context,
+      error: error.message,
+      stack: error.stack,
+      context: context,
       timestamp: new Date().toISOString(),
     });
   }
 
   static logAuthenticationError(error: any) {
-    logger.error("Fraugster authentication failed", {
+    transactionLogger.error("Authentication error", {
       event: "auth_error",
-      error_message: error.message,
+      error: error.message,
       status: error.response?.status,
-      response_data: error.response?.data,
       timestamp: new Date().toISOString(),
     });
   }
 
-  static logApiError(error: any, requestData: any) {
-    logger.error("Fraugster API error", {
+  static logApiError(error: any, context: any) {
+    transactionLogger.error("API error", {
       event: "api_error",
-      trans_id: requestData?.trans_id,
-      error_message: error.message,
+      error: error.message,
       status: error.response?.status,
-      response_data: error.response?.data,
-      request_data: requestData,
+      context: context,
       timestamp: new Date().toISOString(),
     });
   }
 
-  static logTransactionStats(stats: {
-    total: number;
-    approved: number;
-    declined: number;
-    manual_review: number;
-    errors: number;
-  }) {
-    logger.info("Transaction processing statistics", {
-      event: "transaction_stats",
-      ...stats,
-      approval_rate: ((stats.approved / stats.total) * 100).toFixed(2) + "%",
-      decline_rate: ((stats.declined / stats.total) * 100).toFixed(2) + "%",
+  static logPaymentAuth(token: string) {
+    transactionLogger.info("Payment service authentication successful", {
+      event: "payment_auth",
+      token_length: token.length,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  static logPaymentOAuthError(error: any) {
+    transactionLogger.error("Payment service OAuth error", {
+      event: "payment_oauth_error",
+      error: error.message,
+      status: error.response?.status,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  static logPaymentApiError(error: any, context: any) {
+    transactionLogger.error("Payment service API error", {
+      event: "payment_api_error",
+      error: error.message,
+      status: error.response?.status,
+      context: context,
       timestamp: new Date().toISOString(),
     });
   }
@@ -189,13 +199,11 @@ export class TransactionLogger {
       case 1:
         return "APPROVED";
       case 2:
-        return "MANUAL_REVIEW";
+        return "REVIEW";
       case 3:
-        return "CUSTOM_ACTION";
+        return "CHALLENGE";
       default:
         return "UNKNOWN";
     }
   }
 }
-
-export default logger;

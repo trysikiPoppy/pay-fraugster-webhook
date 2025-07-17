@@ -1,4 +1,4 @@
-export interface FraugsterTransaction {
+export interface FraudTransaction {
   transaction_id: string;
   timestamp: string;
   amount: number;
@@ -23,11 +23,11 @@ export interface FraugsterTransaction {
   metadata?: Record<string, unknown>;
 }
 
-interface FraugsterAuthResponse {
+interface FraudAuthResponse {
   sessionToken: string;
 }
 
-interface FraugsterTransactionItem {
+interface FraudTransactionItem {
   item_id: number;
   unique_item_id: string;
   item_desc: string;
@@ -38,12 +38,12 @@ interface FraugsterTransactionItem {
   quantity: number;
 }
 
-interface FraugsterTransactionRequest {
+interface FraudTransactionRequest {
   platform_id?: string;
   trans_id: string;
   seller_id: string;
   order_id?: string;
-  items?: FraugsterTransactionItem[];
+  items?: FraudTransactionItem[];
   trans_amt: number;
   trans_currency?: string;
   trans_ts: string;
@@ -89,16 +89,16 @@ interface FraugsterTransactionRequest {
   ba_name?: string;
 }
 
-interface FraugsterSignal {
+interface FraudSignal {
   category: string;
   id: string;
   related_to: string[];
   type: string;
 }
 
-interface FraugsterTransactionResponse {
-  fraugster_approved: 0 | 1 | 2 | 3;
-  frg_trans_id: string;
+interface FraudTransactionResponse {
+  fraud_approved: 0 | 1 | 2 | 3;
+  fraud_trans_id: string;
   is_liable: boolean;
   liability_reason?: string;
   score: number;
@@ -110,16 +110,16 @@ interface FraugsterTransactionResponse {
     }>;
   };
   evidence?: {
-    signals: FraugsterSignal[];
+    signals: FraudSignal[];
   };
-  frg_device_id?: string;
+  fraud_device_id?: string;
   error_msg?: string;
 }
 
 export type {
-  FraugsterAuthResponse,
-  FraugsterTransactionRequest,
-  FraugsterTransactionResponse,
-  FraugsterTransactionItem,
-  FraugsterSignal,
+  FraudAuthResponse,
+  FraudTransactionRequest,
+  FraudTransactionResponse,
+  FraudTransactionItem,
+  FraudSignal,
 };

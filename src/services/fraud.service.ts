@@ -1,27 +1,27 @@
 import axios, { AxiosError } from "axios";
 import {
-  FraugsterAuthResponse,
-  FraugsterTransactionRequest,
-  FraugsterTransactionResponse,
-} from "../types/fraugster.types";
+  FraudAuthResponse,
+  FraudTransactionRequest,
+  FraudTransactionResponse,
+} from "../types/fraud.types";
 import { config } from "../config";
 import { TransactionLogger, logger } from "../utils/logger";
 
-class FraugsterService {
+class FraudService {
   private baseUrl: string;
   private sessionToken: string | null = null;
   private username: string;
   private password: string;
 
   constructor() {
-    this.baseUrl = config.fraugster.apiUrl;
-    this.username = config.fraugster.username;
-    this.password = config.fraugster.password;
+    this.baseUrl = config.fraud.apiUrl;
+    this.username = config.fraud.username;
+    this.password = config.fraud.password;
   }
 
   private async authenticate(): Promise<void> {
     try {
-      const response = await axios.post<FraugsterAuthResponse>(
+      const response = await axios.post<FraudAuthResponse>(
         `${this.baseUrl}/api/v2/sessions`,
         {},
         {
@@ -37,7 +37,7 @@ class FraugsterService {
       const axiosError = error as AxiosError;
       TransactionLogger.logAuthenticationError(axiosError);
       throw new Error(
-        `Failed to authenticate with Fraugster: ${axiosError.message}`
+        `Failed to authenticate with fraud detection service: ${axiosError.message}`
       );
     }
   }
@@ -49,14 +49,14 @@ class FraugsterService {
   }
 
   public async sendTransaction(
-    transaction: FraugsterTransactionRequest
-  ): Promise<FraugsterTransactionResponse> {
+    transaction: FraudTransactionRequest
+  ): Promise<FraudTransactionResponse> {
     await this.ensureAuthenticated();
 
     try {
-      TransactionLogger.logFraugsterRequest(transaction);
+      TransactionLogger.logFraudRequest(transaction);
 
-      const response = await axios.post<FraugsterTransactionResponse>(
+      const response = await axios.post<FraudTransactionResponse>(
         `${this.baseUrl}/api/v2/transaction`,
         transaction,
         {
@@ -82,10 +82,10 @@ class FraugsterService {
         return this.sendTransaction(transaction);
       }
       throw new Error(
-        `Failed to send transaction to Fraugster: ${axiosError.message}`
+        `Failed to send transaction to fraud detection service: ${axiosError.message}`
       );
     }
   }
 }
 
-export const fraugsterService = new FraugsterService();
+export const fraudService = new FraudService();

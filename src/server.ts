@@ -1,33 +1,28 @@
 import express from "express";
+import fs from "fs";
 import { config } from "./config";
+import { logger } from "./utils/logger";
+import { WebhookController } from "./controllers/webhook.controller";
+import { securityHeaders } from "./middleware/security";
 import { validateWebhook } from "./middleware/validateWebhook";
 import { validatePayJson } from "./middleware/validateJson";
-import {
-  securityHeaders,
-  corsOptions,
-  webhookRateLimit,
-  webhookSlowDown,
-  requestSizeLimit,
-} from "./middleware/security";
-import {
-  globalErrorHandler,
-  notFoundHandler,
-  asyncErrorCatcher,
-} from "./middleware/errorHandler";
-import { WebhookController } from "./controllers/webhook.controller";
-import { logger } from "./utils/logger";
-import fs from "fs";
+import { globalErrorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
+
 app.set("trust proxy", 1);
+
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
 const webhookController = new WebhookController();
 
 const requiredEnvVars = [
-  "PAY_WEBHOOK_SECRET",
-  "PAY_CLIENT_ID",
-  "PAY_CLIENT_SECRET",
-  "FRAUGSTER_USERNAME",
-  "FRAUGSTER_PASSWORD",
+  "PAYMENT_WEBHOOK_SECRET",
+  "PAYMENT_CLIENT_ID",
+  "PAYMENT_CLIENT_SECRET",
+  "FRAUD_USERNAME",
+  "FRAUD_PASSWORD",
 ];
 
 const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
@@ -44,38 +39,33 @@ if (!fs.existsSync("logs")) {
 }
 
 app.use(securityHeaders);
-app.use(corsOptions);
-app.use("/webhook", webhookRateLimit);
-app.use("/webhook", webhookSlowDown);
-app.use(requestSizeLimit);
-app.use(express.json({ limit: "1mb" }));
-
-app.post(
-  "/webhook",
-  validatePayJson,
-  validateWebhook,
-  asyncErrorCatcher(webhookController.handleWebhook)
-);
 
 app.get("/health", (req, res) => {
-  res.status(200).json({
+  res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     version: "1.0.0",
   });
 });
 
+app.post(
+  "/webhook",
+  validatePayJson,
+  validateWebhook,
+  webhookController.processWebhook.bind(webhookController)
+);
+
 app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
 const server = app.listen(config.port, () => {
-  logger.info(`Pay-Fraugster webhook server started`, {
+  logger.info(`Payment-Fraud webhook server started`, {
     event: "server_start",
     port: config.port,
     environment: process.env.NODE_ENV,
-    fraugster_api_url: config.fraugster.apiUrl,
-    pay_api_url: config.payRepublic.apiUrl,
-    webhook_secret_configured: !!config.payRepublic.webhookSecret,
+    fraud_api_url: config.fraud.apiUrl,
+    payment_api_url: config.payment.apiUrl,
+    webhook_secret_configured: !!config.payment.webhookSecret,
   });
 });
 
