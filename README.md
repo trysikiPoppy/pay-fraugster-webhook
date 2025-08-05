@@ -4,9 +4,18 @@
 
 This is a demonstration project showcasing webhook integration patterns between payment systems and fraud detection services. The solution implements production-ready security patterns, comprehensive error handling, and scalable architecture.
 
-**Note:** This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
+### ⚠️ **IMPORTANT NOTE:** This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
 
 Real-time transaction processing system integrating payment platform with fraud detection service.
+
+## System Overview
+
+<div align="center">
+  <img src="screenshots/image_1.png" width="49%" />
+  <img src="screenshots/image_2.png" width="49%" />
+  <img src="screenshots/image_3.png" width="49%" />
+  <img src="screenshots/image_4.png" width="49%" />
+</div>
 
 ## Architecture
 
@@ -336,7 +345,7 @@ Version: 1.0.0 (Production Ready)
 ### Trust Proxy Configuration
 
 ```typescript
-app.set("trust proxy", 1); 
+app.set("trust proxy", 1);
 ```
 
 ### Rate Limiting Strategy
@@ -344,8 +353,8 @@ app.set("trust proxy", 1);
 **webhookRateLimit configuration:**
 
 ```typescript
-windowMs: 1 * 60 * 1000,    
-max: 100,                   
+windowMs: 1 * 60 * 1000,
+max: 100,
 skip: (req) => {
   const userAgent = req.get("User-Agent") || "";
   return userAgent.includes("payment-service") || userAgent.includes("webhook");
@@ -355,10 +364,10 @@ skip: (req) => {
 **webhookSlowDown configuration:**
 
 ```typescript
-windowMs: 1 * 60 * 1000,    
-delayAfter: 50,             
-delayMs: () => 200,         
-maxDelayMs: 2000            
+windowMs: 1 * 60 * 1000,
+delayAfter: 50,
+delayMs: () => 200,
+maxDelayMs: 2000
 ```
 
 This configuration ensures security without blocking legitimate webhooks from Payment Service.
