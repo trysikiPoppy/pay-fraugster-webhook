@@ -6,8 +6,6 @@ This is a demonstration project showcasing webhook integration patterns between 
 
 #### ⚠️ IMPORTANT: This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
 
-### Real-time transaction processing system integrating payment platform with fraud detection service.
-
 ## System Overview
 
 <div align="center">
