@@ -4,17 +4,17 @@
 
 This is a demonstration project showcasing webhook integration patterns between payment systems and fraud detection services. The solution implements production-ready security patterns, comprehensive error handling, and scalable architecture.
 
-### ⚠️ **IMPORTANT NOTE:** This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
+#### ⚠️ IMPORTANT: This repository contains only technical implementation examples with no real credentials, business logic, or proprietary information.
 
-Real-time transaction processing system integrating payment platform with fraud detection service.
+### Real-time transaction processing system integrating payment platform with fraud detection service.
 
 ## System Overview
 
 <div align="center">
-  <img src="screenshots/image_1.png" width="49%" />
-  <img src="screenshots/image_2.png" width="49%" />
-  <img src="screenshots/image_3.png" width="49%" />
-  <img src="screenshots/image_4.png" width="49%" />
+  <a href="screenshots/image_1.png"><img src="screenshots/image_1.png" width="75%" /></a>
+  <a href="screenshots/image_2.png"><img src="screenshots/image_2.png" width="75%" /></a>
+  <a href="screenshots/image_3.png"><img src="screenshots/image_3.png" width="75%" /></a>
+  <a href="screenshots/image_4.png"><img src="screenshots/image_4.png" width="75%" /></a>
 </div>
 
 ## Architecture
